@@ -1,0 +1,40 @@
+# Build artifacts
+build/
+*.o
+*.d
+*.exe
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# System files
+.DS_Store
+Thumbs.db
+
+# Compiler and linker files
+*.a
+*.lib
+*.dll
+*.so
+*.dylib
+
+# Debug files
+*.dSYM/
+*.pdb
+
+# Temporary files
+*.tmp
+*.temp
+
+# Log files
+*.log
+
+# Package files (if using package managers)
+vcpkg_installed/
+
+# Documentation files
+RASTERIZATION.md

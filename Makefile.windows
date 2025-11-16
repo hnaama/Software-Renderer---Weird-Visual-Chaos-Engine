@@ -1,0 +1,56 @@
+# Windows-specific configuration for MinGW/MSYS
+# This file is included by the main Makefile on Windows platforms
+
+# Windows-specific paths and configuration
+ifeq ($(PLATFORM), Windows_MinGW32)
+    ARCH = 32
+else ifeq ($(PLATFORM), Windows_MinGW64)  
+    ARCH = 64
+else
+    ARCH = 64  # Default to 64-bit
+endif
+
+# Common Windows SDL search paths
+SDL_SEARCH_PATHS = \
+    C:/SDL2 \
+    C:/SDL2-$(ARCH) \
+    C:/dev/SDL2 \
+    C:/lib/SDL2 \
+    $(USERPROFILE)/SDL2 \
+    /mingw$(ARCH)/include/SDL2 \
+    /msys64/mingw$(ARCH)/include/SDL2 \
+    /usr/local/include/SDL2
+
+# Try to find SDL2 in common Windows locations
+define find_sdl_windows
+    $(foreach path,$(SDL_SEARCH_PATHS), \
+        $(if $(wildcard $(path)/include/SDL.h), \
+            $(eval SDL_CFLAGS = -I$(path)/include) \
+            $(eval SDL_LIBS = -L$(path)/lib -lSDL2main -lSDL2) \
+            $(eval SDL_FOUND = 1) \
+        ) \
+    )
+endef
+
+# Execute SDL search
+$(eval $(call find_sdl_windows))
+
+# If still not found, try pkg-config (available in some MinGW installations)
+ifeq ($(SDL_FOUND),)
+    ifneq ($(shell which pkg-config 2>/dev/null),)
+        ifneq ($(shell pkg-config --exists sdl2 2>/dev/null && echo "yes"),)
+            SDL_CFLAGS = $(shell pkg-config --cflags sdl2)
+            SDL_LIBS = $(shell pkg-config --libs sdl2)
+            SDL_FOUND = 1
+        endif
+    endif
+endif
+
+# Windows-specific linking flags
+PLATFORM_FLAGS = -lmingw32 -mwindows -Wl,--no-undefined -Wl,--dynamicbase -Wl,--nxcompat
+
+# Additional Windows libraries that might be needed
+WIN_LIBS = -lole32 -loleaut32 -limm32 -lversion -lwinmm -lgdi32 -luser32 -lkernel32
+
+# Combine Windows-specific libraries
+ALL_LIBS += $(WIN_LIBS)

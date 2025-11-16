@@ -1,1 +1,0 @@
-/usr/bin/c++  -arch arm64 -Wl,-search_paths_first -Wl,-headerpad_max_install_names CMakeFiles/software_renderer.dir/src/main.cpp.o -o software_renderer  -L/opt/homebrew/lib -lSDL2 -framework Cocoa -framework IOKit -framework CoreVideo

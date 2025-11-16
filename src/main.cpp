@@ -2,6 +2,176 @@
 #include <iostream>
 #include <vector>
 #include <memory>
+#include <cmath>
+
+// 3D Vector and Matrix classes for 3D transformations
+struct Vec3 {
+    float x, y, z;
+    
+    Vec3(float x = 0, float y = 0, float z = 0) : x(x), y(y), z(z) {}
+    
+    Vec3 operator+(const Vec3& other) const {
+        return Vec3(x + other.x, y + other.y, z + other.z);
+    }
+    
+    Vec3 operator-(const Vec3& other) const {
+        return Vec3(x - other.x, y - other.y, z - other.z);
+    }
+    
+    Vec3 operator*(float scalar) const {
+        return Vec3(x * scalar, y * scalar, z * scalar);
+    }
+    
+    float dot(const Vec3& other) const {
+        return x * other.x + y * other.y + z * other.z;
+    }
+    
+    Vec3 cross(const Vec3& other) const {
+        return Vec3(
+            y * other.z - z * other.y,
+            z * other.x - x * other.z,
+            x * other.y - y * other.x
+        );
+    }
+    
+    float length() const {
+        return sqrt(x * x + y * y + z * z);
+    }
+    
+    Vec3 normalize() const {
+        float len = length();
+        if (len > 0.001f) {
+            return Vec3(x / len, y / len, z / len);
+        }
+        return Vec3(0, 0, 0);
+    }
+};
+
+struct Matrix4x4 {
+    float m[4][4];
+    
+    Matrix4x4() {
+        // Initialize as identity matrix
+        for (int i = 0; i < 4; i++) {
+            for (int j = 0; j < 4; j++) {
+                m[i][j] = (i == j) ? 1.0f : 0.0f;
+            }
+        }
+    }
+    
+    // Create rotation matrix around X axis
+    static Matrix4x4 rotationX(float angle) {
+        Matrix4x4 mat;
+        float c = cos(angle);
+        float s = sin(angle);
+        mat.m[1][1] = c; mat.m[1][2] = -s;
+        mat.m[2][1] = s; mat.m[2][2] = c;
+        return mat;
+    }
+    
+    // Create rotation matrix around Y axis
+    static Matrix4x4 rotationY(float angle) {
+        Matrix4x4 mat;
+        float c = cos(angle);
+        float s = sin(angle);
+        mat.m[0][0] = c;  mat.m[0][2] = s;
+        mat.m[2][0] = -s; mat.m[2][2] = c;
+        return mat;
+    }
+    
+    // Create rotation matrix around Z axis
+    static Matrix4x4 rotationZ(float angle) {
+        Matrix4x4 mat;
+        float c = cos(angle);
+        float s = sin(angle);
+        mat.m[0][0] = c; mat.m[0][1] = -s;
+        mat.m[1][0] = s; mat.m[1][1] = c;
+        return mat;
+    }
+    
+    // Create translation matrix
+    static Matrix4x4 translation(float x, float y, float z) {
+        Matrix4x4 mat;
+        mat.m[0][3] = x;
+        mat.m[1][3] = y;
+        mat.m[2][3] = z;
+        return mat;
+    }
+    
+    // Create perspective projection matrix
+    static Matrix4x4 perspective(float fov, float aspect, float near, float far) {
+        Matrix4x4 mat;
+        float tanHalfFov = tan(fov / 2.0f);
+        
+        for (int i = 0; i < 4; i++) {
+            for (int j = 0; j < 4; j++) {
+                mat.m[i][j] = 0.0f;
+            }
+        }
+        
+        mat.m[0][0] = 1.0f / (aspect * tanHalfFov);
+        mat.m[1][1] = 1.0f / tanHalfFov;
+        mat.m[2][2] = -(far + near) / (far - near);
+        mat.m[2][3] = -(2.0f * far * near) / (far - near);
+        mat.m[3][2] = -1.0f;
+        
+        return mat;
+    }
+    
+    // Matrix multiplication
+    Matrix4x4 operator*(const Matrix4x4& other) const {
+        Matrix4x4 result;
+        for (int i = 0; i < 4; i++) {
+            for (int j = 0; j < 4; j++) {
+                result.m[i][j] = 0;
+                for (int k = 0; k < 4; k++) {
+                    result.m[i][j] += m[i][k] * other.m[k][j];
+                }
+            }
+        }
+        return result;
+    }
+    
+    // Transform a 3D point
+    Vec3 transform(const Vec3& v) const {
+        float w = m[3][0] * v.x + m[3][1] * v.y + m[3][2] * v.z + m[3][3];
+        if (abs(w) < 0.001f) w = 1.0f; // Avoid division by zero
+        
+        return Vec3(
+            (m[0][0] * v.x + m[0][1] * v.y + m[0][2] * v.z + m[0][3]) / w,
+            (m[1][0] * v.x + m[1][1] * v.y + m[1][2] * v.z + m[1][3]) / w,
+            (m[2][0] * v.x + m[2][1] * v.y + m[2][2] * v.z + m[2][3]) / w
+        );
+    }
+};
+
+// 3D Triangle structure
+struct Triangle3D {
+    Vec3 vertices[3];
+    uint32_t colors[3];
+    
+    Triangle3D(Vec3 v0, Vec3 v1, Vec3 v2, uint32_t c0, uint32_t c1, uint32_t c2) {
+        vertices[0] = v0; vertices[1] = v1; vertices[2] = v2;
+        colors[0] = c0; colors[1] = c1; colors[2] = c2;
+    }
+    
+    // Calculate triangle normal for lighting
+    Vec3 getNormal() const {
+        Vec3 edge1 = vertices[1] - vertices[0];
+        Vec3 edge2 = vertices[2] - vertices[0];
+        return edge1.cross(edge2).normalize();
+    }
+    
+    // Transform triangle by matrix
+    Triangle3D transform(const Matrix4x4& matrix) const {
+        return Triangle3D(
+            matrix.transform(vertices[0]),
+            matrix.transform(vertices[1]),
+            matrix.transform(vertices[2]),
+            colors[0], colors[1], colors[2]
+        );
+    }
+};
 
 class PixelBuffer {
 private:
@@ -347,6 +517,47 @@ public:
             x2, y2, 0xFF0000FF   // Blue vertex
         );
     }
+
+    // New method: Project 3D point to 2D screen coordinates
+    std::pair<int, int> project3DTo2D(const Vec3& point, int screenWidth, int screenHeight) {
+        // Simple perspective projection (assuming point is already in normalized device coordinates)
+        int x = (int)((point.x + 1.0f) * 0.5f * screenWidth);
+        int y = (int)((1.0f - point.y) * 0.5f * screenHeight); // Flip Y axis
+        return {x, y};
+    }
+    
+    // New method: Render 3D triangle with depth checking
+    void render3DTriangle(const Triangle3D& triangle, int screenWidth, int screenHeight) {
+        // Project 3D vertices to 2D screen coordinates
+        auto p0 = project3DTo2D(triangle.vertices[0], screenWidth, screenHeight);
+        auto p1 = project3DTo2D(triangle.vertices[1], screenWidth, screenHeight);
+        auto p2 = project3DTo2D(triangle.vertices[2], screenWidth, screenHeight);
+        
+        // Calculate lighting based on triangle normal (simple directional light)
+        Vec3 lightDir = Vec3(0.3f, -0.5f, -0.7f).normalize();
+        Vec3 normal = triangle.getNormal();
+        float lightIntensity = std::max(0.2f, -normal.dot(lightDir)); // Clamp to avoid pure black
+        
+        // Apply lighting to colors
+        auto applyLighting = [lightIntensity](uint32_t color) -> uint32_t {
+            uint8_t a = (color >> 24) & 0xFF;
+            uint8_t r = (uint8_t)(((color >> 16) & 0xFF) * lightIntensity);
+            uint8_t g = (uint8_t)(((color >> 8) & 0xFF) * lightIntensity);
+            uint8_t b = (uint8_t)((color & 0xFF) * lightIntensity);
+            return (a << 24) | (r << 16) | (g << 8) | b;
+        };
+        
+        uint32_t litColor0 = applyLighting(triangle.colors[0]);
+        uint32_t litColor1 = applyLighting(triangle.colors[1]);
+        uint32_t litColor2 = applyLighting(triangle.colors[2]);
+        
+        // Render the triangle with gradient colors
+        fillTriangleGradient(
+            p0.first, p0.second, litColor0,
+            p1.first, p1.second, litColor1,
+            p2.first, p2.second, litColor2
+        );
+    }
 };
 
 int main(int argc, char** argv) {
@@ -411,81 +622,203 @@ int main(int argc, char** argv) {
     bool needsRedraw = true;
     SDL_Event e;
     
+    // Animation variables
+    float rotation_time = 0.0f;
+    uint32_t last_time = SDL_GetTicks();
+    
     std::cout << "Creating drawScene function..." << std::flush;
     
     // Function to draw the scene
     auto drawScene = [&]() {
-        std::cout << "\n=== DRAWING GRADIENT TRIANGLES DEMO ===\n" << std::flush;
+        std::cout << "\n=== DRAWING 3D ROTATING TRIANGLES DEMO ===\n" << std::flush;
         
         // Clear with dark background to make colors pop
-        pixelBuffer.clear(0xFF202020);
+        pixelBuffer.clear(0xFF101010);
         std::cout << "Buffer cleared with dark background\n" << std::flush;
         
-        // Demo 1: RGB Triangle (Red-Green-Blue vertices)
-        std::cout << "Drawing RGB gradient triangle...\n" << std::flush;
-        pixelBuffer.fillTriangleGradient(
-            100, 100, 0xFFFF0000,  // Top vertex: Red
-            50,  200, 0xFF00FF00,  // Bottom left: Green  
-            150, 200, 0xFF0000FF   // Bottom right: Blue
-        );
+        // Set up perspective projection matrix
+        float fov = 45.0f * M_PI / 180.0f; // 45 degrees in radians
+        float aspect = (float)WINDOW_WIDTH / WINDOW_HEIGHT;
+        Matrix4x4 projection = Matrix4x4::perspective(fov, aspect, 0.1f, 100.0f);
         
-        // Demo 2: Warm colors triangle (Red-Yellow-Orange)
-        std::cout << "Drawing warm colors triangle...\n" << std::flush;
-        pixelBuffer.fillTriangleGradient(
-            300, 80,  0xFFFF0000,  // Top: Red
-            250, 180, 0xFFFFFF00,  // Bottom left: Yellow
-            350, 180, 0xFFFF8000   // Bottom right: Orange
-        );
+        // Create base triangles in 3D space
+        std::vector<Triangle3D> triangles;
         
-        // Demo 3: Cool colors triangle (Blue-Cyan-Purple)
-        std::cout << "Drawing cool colors triangle...\n" << std::flush;
-        pixelBuffer.fillTriangleGradient(
-            500, 100, 0xFF0000FF,  // Top: Blue
-            450, 200, 0xFF00FFFF,  // Bottom left: Cyan
-            550, 200, 0xFF8000FF   // Bottom right: Purple
-        );
+        // Triangle 1: RGB triangle rotating around Y axis
+        triangles.push_back(Triangle3D(
+            Vec3(0.0f, 0.5f, -3.0f),   // Top vertex
+            Vec3(-0.5f, -0.5f, -3.0f), // Bottom left
+            Vec3(0.5f, -0.5f, -3.0f),  // Bottom right
+            0xFFFF0000, 0xFF00FF00, 0xFF0000FF // Red, Green, Blue
+        ));
         
-        // Demo 4: Large rainbow triangle using convenience method
-        std::cout << "Drawing large rainbow triangle...\n" << std::flush;
-        pixelBuffer.fillTriangleRainbow(
-            400, 250,  // Top center
-            200, 450,  // Bottom left
-            600, 450   // Bottom right
-        );
+        // Triangle 2: Warm colors triangle rotating around X axis
+        triangles.push_back(Triangle3D(
+            Vec3(0.0f, 0.4f, -2.5f),
+            Vec3(-0.4f, -0.4f, -2.5f),
+            Vec3(0.4f, -0.4f, -2.5f),
+            0xFFFF0000, 0xFFFFFF00, 0xFFFF8000 // Red, Yellow, Orange
+        ));
         
-        // Demo 5: Scanline gradient triangle (different algorithm)
-        std::cout << "Drawing scanline gradient triangle...\n" << std::flush;
-        pixelBuffer.fillTriangleGradientScanline(
-            150, 300, 0xFFFF00FF,  // Magenta
-            100, 400, 0xFF00FF00,  // Green
-            200, 400, 0xFF0080FF   // Light Blue
-        );
+        // Triangle 3: Cool colors triangle rotating around Z axis
+        triangles.push_back(Triangle3D(
+            Vec3(0.0f, 0.3f, -4.0f),
+            Vec3(-0.3f, -0.3f, -4.0f),
+            Vec3(0.3f, -0.3f, -4.0f),
+            0xFF0000FF, 0xFF00FFFF, 0xFF8000FF // Blue, Cyan, Purple
+        ));
         
-        // Demo 6: Grayscale gradient triangle
-        std::cout << "Drawing grayscale gradient triangle...\n" << std::flush;
-        pixelBuffer.fillTriangleGradient(
-            650, 300, 0xFFFFFFFF,  // White
-            600, 400, 0xFF808080,  // Gray
-            700, 400, 0xFF000000   // Black
-        );
+        // Triangle 4: Large triangle rotating around multiple axes
+        triangles.push_back(Triangle3D(
+            Vec3(0.0f, 0.8f, -5.0f),
+            Vec3(-0.8f, -0.8f, -5.0f),
+            Vec3(0.8f, -0.8f, -5.0f),
+            0xFFFF0000, 0xFF00FF00, 0xFF0000FF // RGB
+        ));
         
-        // Demo 7: Multiple overlapping transparent-ish triangles
-        std::cout << "Drawing overlapping colored triangles...\n" << std::flush;
-        pixelBuffer.fillTriangleGradient(
-            80, 480, 0xFFFF4040,   // Light red
-            40, 550, 0xFF40FF40,   // Light green
-            120, 550, 0xFF4040FF   // Light blue
-        );
+        // Triangle 5: Small fast-spinning triangle
+        triangles.push_back(Triangle3D(
+            Vec3(0.0f, 0.25f, -1.5f),
+            Vec3(-0.25f, -0.25f, -1.5f),
+            Vec3(0.25f, -0.25f, -1.5f),
+            0xFFFF00FF, 0xFF00FF00, 0xFF0080FF // Magenta, Green, Light Blue
+        ));
         
-        // Demo 8: Pastel colors triangle
-        std::cout << "Drawing pastel colors triangle...\n" << std::flush;
-        pixelBuffer.fillTriangleGradient(
-            600, 480, 0xFFFFB6C1,  // Light pink
-            550, 550, 0xFFB6FFB6,  // Light green
-            650, 550, 0xFFB6B6FF   // Light blue
-        );
+        // Triangle 6: Oscillating triangle
+        triangles.push_back(Triangle3D(
+            Vec3(0.0f, 0.4f, -3.5f),
+            Vec3(-0.4f, -0.4f, -3.5f),
+            Vec3(0.4f, -0.4f, -3.5f),
+            0xFFFFFFFF, 0xFF808080, 0xFF000000 // White, Gray, Black
+        ));
         
-        std::cout << "=== GRADIENT TRIANGLES DEMO COMPLETE ===\n\n" << std::flush;
+        // Triangle 7: Tumbling triangle (rotates around all axes)
+        triangles.push_back(Triangle3D(
+            Vec3(0.0f, 0.35f, -2.8f),
+            Vec3(-0.35f, -0.35f, -2.8f),
+            Vec3(0.35f, -0.35f, -2.8f),
+            0xFFFF4040, 0xFF40FF40, 0xFF4040FF // Light RGB
+        ));
+        
+        // Triangle 8: Wobbling triangle with complex motion
+        triangles.push_back(Triangle3D(
+            Vec3(0.0f, 0.3f, -6.0f),
+            Vec3(-0.3f, -0.3f, -6.0f),
+            Vec3(0.3f, -0.3f, -6.0f),
+            0xFFFFB6C1, 0xFFB6FFB6, 0xFFB6B6FF // Pastel colors
+        ));
+        
+        // Create transformation matrices for each triangle
+        std::vector<Matrix4x4> transformations;
+        
+        // Transform 1: Y-axis rotation (clockwise)
+        Matrix4x4 trans1 = Matrix4x4::translation(-2.5f, 1.0f, 0.0f) *
+                           Matrix4x4::rotationY(rotation_time * 1.0f) *
+                           projection;
+        transformations.push_back(trans1);
+        
+        // Transform 2: X-axis rotation (counter-clockwise, faster)
+        Matrix4x4 trans2 = Matrix4x4::translation(0.0f, 1.0f, 0.0f) *
+                           Matrix4x4::rotationX(-rotation_time * 1.5f) *
+                           projection;
+        transformations.push_back(trans2);
+        
+        // Transform 3: Z-axis rotation (slow clockwise)
+        Matrix4x4 trans3 = Matrix4x4::translation(2.5f, 1.0f, 0.0f) *
+                           Matrix4x4::rotationZ(rotation_time * 0.7f) *
+                           projection;
+        transformations.push_back(trans3);
+        
+        // Transform 4: Multiple axes rotation (very slow)
+        Matrix4x4 trans4 = Matrix4x4::translation(0.0f, -1.0f, 0.0f) *
+                           Matrix4x4::rotationY(-rotation_time * 0.3f) *
+                           Matrix4x4::rotationX(rotation_time * 0.2f) *
+                           projection;
+        transformations.push_back(trans4);
+        
+        // Transform 5: Fast spinning around Y and Z axes
+        Matrix4x4 trans5 = Matrix4x4::translation(-3.0f, -0.5f, 0.0f) *
+                           Matrix4x4::rotationY(rotation_time * 2.0f) *
+                           Matrix4x4::rotationZ(rotation_time * 1.5f) *
+                           projection;
+        transformations.push_back(trans5);
+        
+        // Transform 6: Oscillating rotation (sine wave)
+        float osc_angle = sin(rotation_time * 1.5f) * 0.5f;
+        Matrix4x4 trans6 = Matrix4x4::translation(3.0f, -0.5f, 0.0f) *
+                           Matrix4x4::rotationX(osc_angle) *
+                           Matrix4x4::rotationY(osc_angle * 0.7f) *
+                           projection;
+        transformations.push_back(trans6);
+        
+        // Transform 7: Tumbling motion (all three axes)
+        Matrix4x4 trans7 = Matrix4x4::translation(-1.5f, 0.0f, 0.0f) *
+                           Matrix4x4::rotationX(rotation_time * 1.2f) *
+                           Matrix4x4::rotationY(rotation_time * 0.8f) *
+                           Matrix4x4::rotationZ(rotation_time * 0.5f) *
+                           projection;
+        transformations.push_back(trans7);
+        
+        // Transform 8: Complex wobble motion
+        float wobble_x = sin(rotation_time * 2.0f) * 0.3f;
+        float wobble_y = cos(rotation_time * 1.7f) * 0.3f;
+        float wobble_z = sin(rotation_time * 0.9f) * cos(rotation_time * 1.1f) * 0.2f;
+        Matrix4x4 trans8 = Matrix4x4::translation(1.5f, 0.0f, 0.0f) *
+                           Matrix4x4::rotationX(wobble_x) *
+                           Matrix4x4::rotationY(wobble_y) *
+                           Matrix4x4::rotationZ(wobble_z) *
+                           projection;
+        transformations.push_back(trans8);
+        
+        // Render all triangles
+        for (size_t i = 0; i < triangles.size() && i < transformations.size(); i++) {
+            std::cout << "Rendering 3D triangle " << (i + 1) << "...\n" << std::flush;
+            
+            // Transform triangle to screen space
+            Triangle3D transformed = triangles[i].transform(transformations[i]);
+            
+            // Check if triangle is facing towards camera (backface culling)
+            Vec3 normal = transformed.getNormal();
+            if (normal.z > 0) { // Triangle facing camera
+                pixelBuffer.render3DTriangle(transformed, WINDOW_WIDTH, WINDOW_HEIGHT);
+            }
+        }
+        
+        // Add some additional 3D triangles for a more complex scene
+        
+        // Spinning pyramid faces (4 triangles forming a pyramid)
+        Vec3 pyramid_center = Vec3(0.0f, 0.0f, -7.0f);
+        float pyramid_size = 0.6f;
+        
+        // Pyramid base vertices
+        Vec3 base1 = pyramid_center + Vec3(-pyramid_size, -pyramid_size, pyramid_size);
+        Vec3 base2 = pyramid_center + Vec3(pyramid_size, -pyramid_size, pyramid_size);
+        Vec3 base3 = pyramid_center + Vec3(pyramid_size, -pyramid_size, -pyramid_size);
+        Vec3 base4 = pyramid_center + Vec3(-pyramid_size, -pyramid_size, -pyramid_size);
+        Vec3 apex = pyramid_center + Vec3(0.0f, pyramid_size, 0.0f);
+        
+        // Create pyramid rotation
+        Matrix4x4 pyramid_rot = Matrix4x4::rotationY(rotation_time * 0.5f) *
+                               Matrix4x4::rotationX(rotation_time * 0.3f) *
+                               projection;
+        
+        // Pyramid faces
+        std::vector<Triangle3D> pyramid_faces = {
+            Triangle3D(apex, base1, base2, 0xFFFF6666, 0xFFFF0000, 0xFFFF3333), // Red face
+            Triangle3D(apex, base2, base3, 0xFF66FF66, 0xFF00FF00, 0xFF33FF33), // Green face
+            Triangle3D(apex, base3, base4, 0xFF6666FF, 0xFF0000FF, 0xFF3333FF), // Blue face
+            Triangle3D(apex, base4, base1, 0xFFFFFF66, 0xFFFFFF00, 0xFFFFFF33)  // Yellow face
+        };
+        
+        for (auto& face : pyramid_faces) {
+            Triangle3D transformed_face = face.transform(pyramid_rot);
+            Vec3 normal = transformed_face.getNormal();
+            if (normal.z > 0) {
+                pixelBuffer.render3DTriangle(transformed_face, WINDOW_WIDTH, WINDOW_HEIGHT);
+            }
+        }
+        
+        std::cout << "=== 3D ROTATING TRIANGLES DEMO COMPLETE ===\n\n" << std::flush;
     };
     
     std::cout << "About to call drawScene...\n" << std::flush;
@@ -513,6 +846,15 @@ int main(int argc, char** argv) {
     std::cout << "Entering main loop (press ESC to exit, any other key to redraw)...\n" << std::flush;
     
     while (running) {
+        // Update animation time
+        uint32_t current_time = SDL_GetTicks();
+        float delta_time = (current_time - last_time) / 1000.0f;
+        last_time = current_time;
+        rotation_time += delta_time;
+        
+        // Continuous animation - always redraw
+        needsRedraw = true;
+        
         while (SDL_PollEvent(&e)) {
             switch (e.type) {
                 case SDL_QUIT:
@@ -524,9 +866,6 @@ int main(int argc, char** argv) {
                     if (e.key.keysym.sym == SDLK_ESCAPE) {
                         std::cout << "Escape pressed, exiting\n" << std::flush;
                         running = false;
-                    } else {
-                        std::cout << "Key pressed, redrawing...\n" << std::flush;
-                        needsRedraw = true;
                     }
                     break;
                     
@@ -541,7 +880,6 @@ int main(int argc, char** argv) {
         }
         
         if (needsRedraw) {
-            std::cout << "Performing redraw...\n" << std::flush;
             drawScene();
             
             SDL_LockTexture(texture, NULL, &texturePixels, &pitch);
@@ -553,10 +891,9 @@ int main(int argc, char** argv) {
             SDL_RenderPresent(renderer);
             
             needsRedraw = false;
-            std::cout << "Redraw complete\n" << std::flush;
         }
         
-        SDL_Delay(16);
+        SDL_Delay(16); // ~60 FPS
     }
 
     std::cout << "Cleaning up SDL resources...\n" << std::flush;

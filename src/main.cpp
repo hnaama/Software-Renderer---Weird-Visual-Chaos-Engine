@@ -3,6 +3,29 @@
 #include <vector>
 #include <memory>
 #include <cmath>
+#include <random>
+#include <algorithm>
+
+// Random number generator setup
+std::random_device rd;
+std::mt19937 rng(rd());
+
+// Helper function to get random float in range
+float randomFloat(float min, float max) {
+    std::uniform_real_distribution<float> dist(min, max);
+    return dist(rng);
+}
+
+// Helper function to get random int in range
+int randomInt(int min, int max) {
+    std::uniform_int_distribution<int> dist(min, max);
+    return dist(rng);
+}
+
+// Helper function to get random color
+uint32_t randomColor() {
+    return 0xFF000000 | (randomInt(0, 255) << 16) | (randomInt(0, 255) << 8) | randomInt(0, 255);
+}
 
 // 3D Vector and Matrix classes for 3D transformations
 struct Vec3 {
@@ -170,6 +193,369 @@ struct Triangle3D {
             matrix.transform(vertices[2]),
             colors[0], colors[1], colors[2]
         );
+    }
+};
+
+// Weird Visual Entity base class
+struct WeirdEntity {
+    Vec3 position;
+    Vec3 velocity;
+    Vec3 size;
+    float rotation;
+    float rotationSpeed;
+    float life;
+    float maxLife;
+    std::vector<uint32_t> colors;
+    int type;
+    float morphTime;
+    
+    WeirdEntity(Vec3 pos) : position(pos), morphTime(0.0f) {
+        velocity = Vec3(randomFloat(-2, 2), randomFloat(-2, 2), randomFloat(-1, 1));
+        size = Vec3(randomFloat(0.1f, 0.8f), randomFloat(0.1f, 0.8f), randomFloat(0.1f, 0.8f));
+        rotation = randomFloat(0, 2 * M_PI);
+        rotationSpeed = randomFloat(-3, 3);
+        maxLife = randomFloat(5.0f, 15.0f);
+        life = maxLife;
+        type = randomInt(0, 6); // Different entity types
+        
+        // Generate weird color palette
+        int numColors = randomInt(3, 6);
+        for (int i = 0; i < numColors; i++) {
+            colors.push_back(randomColor());
+        }
+    }
+    
+    void update(float deltaTime, int screenWidth, int screenHeight) {
+        life -= deltaTime;
+        morphTime += deltaTime;
+        
+        // Update position with some chaos
+        position.x += velocity.x * deltaTime;
+        position.y += velocity.y * deltaTime;
+        position.z += velocity.z * deltaTime;
+        
+        // Weird physics - entities can bounce, wrap, or teleport
+        if (randomFloat(0, 1) < 0.01f) { // 1% chance per frame for chaos
+            switch (randomInt(0, 3)) {
+                case 0: // Bounce
+                    velocity.x *= -1.2f;
+                    velocity.y *= -1.2f;
+                    break;
+                case 1: // Random teleport
+                    position.x = randomFloat(-3, 3);
+                    position.y = randomFloat(-2, 2);
+                    break;
+                case 2: // Speed up
+                    velocity = velocity * randomFloat(1.5f, 2.0f);
+                    break;
+                case 3: // Change direction
+                    velocity = Vec3(randomFloat(-3, 3), randomFloat(-3, 3), randomFloat(-1, 1));
+                    break;
+            }
+        }
+        
+        // Wrap around screen
+        if (position.x > 4) position.x = -4;
+        if (position.x < -4) position.x = 4;
+        if (position.y > 3) position.y = -3;
+        if (position.y < -3) position.y = 3;
+        
+        // Update rotation
+        rotation += rotationSpeed * deltaTime;
+        
+        // Morphing size
+        float morphFactor = sin(morphTime * randomFloat(1, 3)) * 0.3f + 1.0f;
+        size = size * morphFactor;
+    }
+    
+    bool isDead() const {
+        return life <= 0;
+    }
+    
+    std::vector<Triangle3D> generateTriangles() const {
+        std::vector<Triangle3D> triangles;
+        float lifeFactor = life / maxLife;
+        
+        switch (type) {
+            case 0: // Spiky Star
+                generateSpikyTriangles(triangles, lifeFactor);
+                break;
+            case 1: // Morphing Blob
+                generateBlobTriangles(triangles, lifeFactor);
+                break;
+            case 2: // Fractal Spikes
+                generateFractalTriangles(triangles, lifeFactor);
+                break;
+            case 3: // Twisted Ribbon
+                generateRibbonTriangles(triangles, lifeFactor);
+                break;
+            case 4: // Pulsing Orb
+                generateOrbTriangles(triangles, lifeFactor);
+                break;
+            case 5: // Chaotic Fragments
+                generateFragmentTriangles(triangles, lifeFactor);
+                break;
+            default: // Weird Polyhedron
+                generatePolyhedronTriangles(triangles, lifeFactor);
+                break;
+        }
+        
+        return triangles;
+    }
+    
+private:
+    void generateSpikyTriangles(std::vector<Triangle3D>& triangles, float lifeFactor) const {
+        int spikes = 8 + (int)(sin(morphTime) * 4);
+        for (int i = 0; i < spikes; i++) {
+            float angle = (i / (float)spikes) * 2 * M_PI + rotation;
+            float innerRadius = size.x * 0.3f;
+            float outerRadius = size.x * (1.0f + sin(morphTime * 2 + i) * 0.5f);
+            
+            Vec3 center = position;
+            Vec3 inner1 = center + Vec3(cos(angle) * innerRadius, sin(angle) * innerRadius, 0);
+            Vec3 outer = center + Vec3(cos(angle + 0.1f) * outerRadius, sin(angle + 0.1f) * outerRadius, sin(morphTime + i) * 0.2f);
+            Vec3 inner2 = center + Vec3(cos(angle + 0.2f) * innerRadius, sin(angle + 0.2f) * innerRadius, 0);
+            
+            uint32_t color1 = colors[i % colors.size()];
+            uint32_t color2 = colors[(i + 1) % colors.size()];
+            uint32_t color3 = colors[(i + 2) % colors.size()];
+            
+            triangles.push_back(Triangle3D(inner1, outer, inner2, color1, color2, color3));
+        }
+    }
+    
+    void generateBlobTriangles(std::vector<Triangle3D>& triangles, float lifeFactor) const {
+        int segments = 12;
+        for (int i = 0; i < segments; i++) {
+            float angle1 = (i / (float)segments) * 2 * M_PI;
+            float angle2 = ((i + 1) / (float)segments) * 2 * M_PI;
+            
+            float noise1 = sin(morphTime * 2 + angle1 * 3) * 0.3f + 1.0f;
+            float noise2 = sin(morphTime * 2 + angle2 * 3) * 0.3f + 1.0f;
+            
+            Vec3 center = position;
+            Vec3 p1 = center + Vec3(cos(angle1) * size.x * noise1, sin(angle1) * size.y * noise1, 0);
+            Vec3 p2 = center + Vec3(cos(angle2) * size.x * noise2, sin(angle2) * size.y * noise2, 0);
+            Vec3 p3 = center + Vec3(0, 0, size.z * sin(morphTime + i));
+            
+            uint32_t c1 = colors[i % colors.size()];
+            uint32_t c2 = colors[(i + 1) % colors.size()];
+            uint32_t c3 = colors[(i + 2) % colors.size()];
+            
+            triangles.push_back(Triangle3D(center, p1, p2, c1, c2, c3));
+            triangles.push_back(Triangle3D(p1, p2, p3, c1, c2, c3));
+        }
+    }
+    
+    void generateFractalTriangles(std::vector<Triangle3D>& triangles, float lifeFactor) const {
+        // Generate fractal-like recursive triangles
+        generateFractalLevel(triangles, position, size.x, 0, 3);
+    }
+    
+    void generateFractalLevel(std::vector<Triangle3D>& triangles, Vec3 center, float scale, int level, int maxLevel) const {
+        if (level >= maxLevel) return;
+        
+        float angleOffset = rotation + level * 0.7f + morphTime;
+        for (int i = 0; i < 3; i++) {
+            float angle = (i / 3.0f) * 2 * M_PI + angleOffset;
+            Vec3 offset = Vec3(cos(angle) * scale, sin(angle) * scale, sin(morphTime + level) * scale * 0.3f);
+            Vec3 newCenter = center + offset;
+            
+            // Create triangle at this level
+            Vec3 p1 = newCenter + Vec3(cos(angle) * scale * 0.3f, sin(angle) * scale * 0.3f, 0);
+            Vec3 p2 = newCenter + Vec3(cos(angle + 2.1f) * scale * 0.3f, sin(angle + 2.1f) * scale * 0.3f, 0);
+            Vec3 p3 = newCenter + Vec3(0, 0, scale * 0.5f);
+            
+            uint32_t color = colors[(level + i) % colors.size()];
+            triangles.push_back(Triangle3D(p1, p2, p3, color, color, color));
+            
+            // Recurse
+            generateFractalLevel(triangles, newCenter, scale * 0.6f, level + 1, maxLevel);
+        }
+    }
+    
+    void generateRibbonTriangles(std::vector<Triangle3D>& triangles, float lifeFactor) const {
+        int segments = 20;
+        for (int i = 0; i < segments - 1; i++) {
+            float t1 = i / (float)segments;
+            float t2 = (i + 1) / (float)segments;
+            
+            // Create twisted ribbon path
+            Vec3 p1 = position + Vec3(
+                cos(t1 * 4 * M_PI + morphTime) * size.x,
+                sin(t1 * 2 * M_PI + morphTime) * size.y,
+                (t1 - 0.5f) * size.z * 2
+            );
+            Vec3 p2 = position + Vec3(
+                cos(t2 * 4 * M_PI + morphTime) * size.x,
+                sin(t2 * 2 * M_PI + morphTime) * size.y,
+                (t2 - 0.5f) * size.z * 2
+            );
+            
+            // Ribbon width
+            Vec3 width1 = Vec3(sin(t1 * 6 + morphTime) * 0.1f, cos(t1 * 6 + morphTime) * 0.1f, 0);
+            Vec3 width2 = Vec3(sin(t2 * 6 + morphTime) * 0.1f, cos(t2 * 6 + morphTime) * 0.1f, 0);
+            
+            triangles.push_back(Triangle3D(
+                p1 + width1, p1 - width1, p2 + width2,
+                colors[i % colors.size()], colors[(i+1) % colors.size()], colors[(i+2) % colors.size()]
+            ));
+            triangles.push_back(Triangle3D(
+                p1 - width1, p2 - width2, p2 + width2,
+                colors[i % colors.size()], colors[(i+1) % colors.size()], colors[(i+2) % colors.size()]
+            ));
+        }
+    }
+    
+    void generateOrbTriangles(std::vector<Triangle3D>& triangles, float lifeFactor) const {
+        int rings = 6;
+        int segments = 8;
+        
+        for (int ring = 0; ring < rings; ring++) {
+            float ringHeight = (ring / (float)rings - 0.5f) * size.z * 2;
+            float ringRadius = sqrt(1.0f - pow(ringHeight / size.z, 2)) * size.x;
+            ringRadius *= (1.0f + sin(morphTime * 2 + ring) * 0.3f); // Pulsing
+            
+            for (int seg = 0; seg < segments; seg++) {
+                float angle1 = (seg / (float)segments) * 2 * M_PI + rotation;
+                float angle2 = ((seg + 1) / (float)segments) * 2 * M_PI + rotation;
+                
+                Vec3 p1 = position + Vec3(cos(angle1) * ringRadius, sin(angle1) * ringRadius, ringHeight);
+                Vec3 p2 = position + Vec3(cos(angle2) * ringRadius, sin(angle2) * ringRadius, ringHeight);
+                Vec3 center = position + Vec3(0, 0, ringHeight);
+                
+                triangles.push_back(Triangle3D(center, p1, p2, 
+                    colors[ring % colors.size()], 
+                    colors[(ring + seg) % colors.size()], 
+                    colors[(ring + seg + 1) % colors.size()]));
+            }
+        }
+    }
+    
+    void generateFragmentTriangles(std::vector<Triangle3D>& triangles, float lifeFactor) const {
+        int fragments = 15;
+        for (int i = 0; i < fragments; i++) {
+            Vec3 offset = Vec3(
+                sin(morphTime + i) * size.x * (1 + i * 0.1f),
+                cos(morphTime * 1.3f + i) * size.y * (1 + i * 0.1f),
+                sin(morphTime * 0.7f + i) * size.z
+            );
+            
+            Vec3 center = position + offset;
+            float fragSize = size.x * 0.2f * (1.0f - i * 0.05f);
+            
+            // Random triangle orientation
+            float angle = rotation + i * 0.8f + morphTime;
+            Vec3 p1 = center + Vec3(cos(angle) * fragSize, sin(angle) * fragSize, 0);
+            Vec3 p2 = center + Vec3(cos(angle + 2.1f) * fragSize, sin(angle + 2.1f) * fragSize, 0);
+            Vec3 p3 = center + Vec3(cos(angle + 4.2f) * fragSize, sin(angle + 4.2f) * fragSize, fragSize);
+            
+            triangles.push_back(Triangle3D(p1, p2, p3, 
+                colors[i % colors.size()], 
+                colors[(i + 1) % colors.size()], 
+                colors[(i + 2) % colors.size()]));
+        }
+    }
+    
+    void generatePolyhedronTriangles(std::vector<Triangle3D>& triangles, float lifeFactor) const {
+        // Create weird polyhedron with morphing vertices
+        std::vector<Vec3> vertices;
+        
+        // Generate base vertices of a deformed polyhedron
+        for (int i = 0; i < 8; i++) {
+            float angle = (i / 8.0f) * 2 * M_PI;
+            float radius = size.x * (1.0f + sin(morphTime * 3 + i) * 0.4f);
+            float height = (i % 2 == 0 ? size.z : -size.z) * (1.0f + cos(morphTime * 2 + i) * 0.3f);
+            
+            vertices.push_back(position + Vec3(
+                cos(angle + rotation) * radius,
+                sin(angle + rotation) * radius,
+                height
+            ));
+        }
+        
+        // Connect vertices in weird ways
+        std::vector<std::tuple<int, int, int>> faces = {
+            {0, 1, 2}, {2, 3, 4}, {4, 5, 6}, {6, 7, 0},
+            {0, 2, 4}, {4, 6, 0}, {1, 3, 5}, {5, 7, 1},
+            {0, 1, 7}, {1, 2, 3}, {3, 4, 5}, {5, 6, 7}
+        };
+        
+        for (auto& face : faces) {
+            int i1 = std::get<0>(face);
+            int i2 = std::get<1>(face);
+            int i3 = std::get<2>(face);
+            
+            triangles.push_back(Triangle3D(
+                vertices[i1], vertices[i2], vertices[i3],
+                colors[i1 % colors.size()], 
+                colors[i2 % colors.size()], 
+                colors[i3 % colors.size()]
+            ));
+        }
+    }
+};
+
+// Weird Visual Manager
+class WeirdVisualManager {
+private:
+    std::vector<std::unique_ptr<WeirdEntity>> entities;
+    float spawnTimer;
+    float spawnInterval;
+    int maxEntities;
+    
+public:
+    WeirdVisualManager() : spawnTimer(0), spawnInterval(randomFloat(0.5f, 2.0f)), maxEntities(randomInt(8, 20)) {}
+    
+    void update(float deltaTime) {
+        // Update existing entities
+        for (auto& entity : entities) {
+            entity->update(deltaTime, 800, 600);
+        }
+        
+        // Remove dead entities
+        entities.erase(
+            std::remove_if(entities.begin(), entities.end(),
+                [](const std::unique_ptr<WeirdEntity>& entity) {
+                    return entity->isDead();
+                }),
+            entities.end()
+        );
+        
+        // Spawn new entities
+        spawnTimer += deltaTime;
+        if (spawnTimer >= spawnInterval && entities.size() < maxEntities) {
+            spawnTimer = 0;
+            spawnInterval = randomFloat(0.3f, 2.5f); // Random spawn intervals
+            
+            Vec3 spawnPos = Vec3(
+                randomFloat(-3, 3),
+                randomFloat(-2, 2),
+                randomFloat(-6, -2)
+            );
+            
+            entities.push_back(std::make_unique<WeirdEntity>(spawnPos));
+        }
+        
+        // Occasionally change max entities for chaos
+        if (randomFloat(0, 1) < 0.01f) {
+            maxEntities = randomInt(5, 25);
+        }
+    }
+    
+    std::vector<Triangle3D> getAllTriangles() const {
+        std::vector<Triangle3D> allTriangles;
+        
+        for (const auto& entity : entities) {
+            auto entityTriangles = entity->generateTriangles();
+            allTriangles.insert(allTriangles.end(), entityTriangles.begin(), entityTriangles.end());
+        }
+        
+        return allTriangles;
+    }
+    
+    size_t getEntityCount() const {
+        return entities.size();
     }
 };
 
@@ -628,197 +1014,83 @@ int main(int argc, char** argv) {
     
     std::cout << "Creating drawScene function..." << std::flush;
     
+    // Create weird visual manager
+    WeirdVisualManager weirdVisualManager;
+
     // Function to draw the scene
     auto drawScene = [&]() {
-        std::cout << "\n=== DRAWING 3D ROTATING TRIANGLES DEMO ===\n" << std::flush;
+        std::cout << "\n=== DRAWING WEIRD VISUAL CHAOS DEMO ===\n" << std::flush;
         
-        // Clear with dark background to make colors pop
-        pixelBuffer.clear(0xFF101010);
-        std::cout << "Buffer cleared with dark background\n" << std::flush;
+        // Update animation time
+        uint32_t current_time = SDL_GetTicks();
+        float delta_time = (current_time - last_time) / 1000.0f;
+        last_time = current_time;
+        rotation_time += delta_time;
+        
+        // Clear with a randomly shifting dark background
+        uint32_t bgColor = 0xFF000000 | 
+                          (randomInt(5, 25) << 16) | 
+                          (randomInt(5, 25) << 8) | 
+                          randomInt(5, 25);
+        pixelBuffer.clear(bgColor);
+        std::cout << "Buffer cleared with chaotic background\n" << std::flush;
+        
+        // Update weird visual entities
+        weirdVisualManager.update(delta_time);
         
         // Set up perspective projection matrix
         float fov = 45.0f * M_PI / 180.0f; // 45 degrees in radians
         float aspect = (float)WINDOW_WIDTH / WINDOW_HEIGHT;
         Matrix4x4 projection = Matrix4x4::perspective(fov, aspect, 0.1f, 100.0f);
         
-        // Create base triangles in 3D space
-        std::vector<Triangle3D> triangles;
+        // Render weird visual entities first (background layer)
+        auto weirdTriangles = weirdVisualManager.getAllTriangles();
+        std::cout << "Rendering " << weirdTriangles.size() << " weird triangles from " << weirdVisualManager.getEntityCount() << " entities...\n" << std::flush;
         
-        // Triangle 1: RGB triangle rotating around Y axis
-        triangles.push_back(Triangle3D(
-            Vec3(0.0f, 0.5f, -3.0f),   // Top vertex
-            Vec3(-0.5f, -0.5f, -3.0f), // Bottom left
-            Vec3(0.5f, -0.5f, -3.0f),  // Bottom right
-            0xFFFF0000, 0xFF00FF00, 0xFF0000FF // Red, Green, Blue
-        ));
-        
-        // Triangle 2: Warm colors triangle rotating around X axis
-        triangles.push_back(Triangle3D(
-            Vec3(0.0f, 0.4f, -2.5f),
-            Vec3(-0.4f, -0.4f, -2.5f),
-            Vec3(0.4f, -0.4f, -2.5f),
-            0xFFFF0000, 0xFFFFFF00, 0xFFFF8000 // Red, Yellow, Orange
-        ));
-        
-        // Triangle 3: Cool colors triangle rotating around Z axis
-        triangles.push_back(Triangle3D(
-            Vec3(0.0f, 0.3f, -4.0f),
-            Vec3(-0.3f, -0.3f, -4.0f),
-            Vec3(0.3f, -0.3f, -4.0f),
-            0xFF0000FF, 0xFF00FFFF, 0xFF8000FF // Blue, Cyan, Purple
-        ));
-        
-        // Triangle 4: Large triangle rotating around multiple axes
-        triangles.push_back(Triangle3D(
-            Vec3(0.0f, 0.8f, -5.0f),
-            Vec3(-0.8f, -0.8f, -5.0f),
-            Vec3(0.8f, -0.8f, -5.0f),
-            0xFFFF0000, 0xFF00FF00, 0xFF0000FF // RGB
-        ));
-        
-        // Triangle 5: Small fast-spinning triangle
-        triangles.push_back(Triangle3D(
-            Vec3(0.0f, 0.25f, -1.5f),
-            Vec3(-0.25f, -0.25f, -1.5f),
-            Vec3(0.25f, -0.25f, -1.5f),
-            0xFFFF00FF, 0xFF00FF00, 0xFF0080FF // Magenta, Green, Light Blue
-        ));
-        
-        // Triangle 6: Oscillating triangle
-        triangles.push_back(Triangle3D(
-            Vec3(0.0f, 0.4f, -3.5f),
-            Vec3(-0.4f, -0.4f, -3.5f),
-            Vec3(0.4f, -0.4f, -3.5f),
-            0xFFFFFFFF, 0xFF808080, 0xFF000000 // White, Gray, Black
-        ));
-        
-        // Triangle 7: Tumbling triangle (rotates around all axes)
-        triangles.push_back(Triangle3D(
-            Vec3(0.0f, 0.35f, -2.8f),
-            Vec3(-0.35f, -0.35f, -2.8f),
-            Vec3(0.35f, -0.35f, -2.8f),
-            0xFFFF4040, 0xFF40FF40, 0xFF4040FF // Light RGB
-        ));
-        
-        // Triangle 8: Wobbling triangle with complex motion
-        triangles.push_back(Triangle3D(
-            Vec3(0.0f, 0.3f, -6.0f),
-            Vec3(-0.3f, -0.3f, -6.0f),
-            Vec3(0.3f, -0.3f, -6.0f),
-            0xFFFFB6C1, 0xFFB6FFB6, 0xFFB6B6FF // Pastel colors
-        ));
-        
-        // Create transformation matrices for each triangle
-        std::vector<Matrix4x4> transformations;
-        
-        // Transform 1: Y-axis rotation (clockwise)
-        Matrix4x4 trans1 = Matrix4x4::translation(-2.5f, 1.0f, 0.0f) *
-                           Matrix4x4::rotationY(rotation_time * 1.0f) *
-                           projection;
-        transformations.push_back(trans1);
-        
-        // Transform 2: X-axis rotation (counter-clockwise, faster)
-        Matrix4x4 trans2 = Matrix4x4::translation(0.0f, 1.0f, 0.0f) *
-                           Matrix4x4::rotationX(-rotation_time * 1.5f) *
-                           projection;
-        transformations.push_back(trans2);
-        
-        // Transform 3: Z-axis rotation (slow clockwise)
-        Matrix4x4 trans3 = Matrix4x4::translation(2.5f, 1.0f, 0.0f) *
-                           Matrix4x4::rotationZ(rotation_time * 0.7f) *
-                           projection;
-        transformations.push_back(trans3);
-        
-        // Transform 4: Multiple axes rotation (very slow)
-        Matrix4x4 trans4 = Matrix4x4::translation(0.0f, -1.0f, 0.0f) *
-                           Matrix4x4::rotationY(-rotation_time * 0.3f) *
-                           Matrix4x4::rotationX(rotation_time * 0.2f) *
-                           projection;
-        transformations.push_back(trans4);
-        
-        // Transform 5: Fast spinning around Y and Z axes
-        Matrix4x4 trans5 = Matrix4x4::translation(-3.0f, -0.5f, 0.0f) *
-                           Matrix4x4::rotationY(rotation_time * 2.0f) *
-                           Matrix4x4::rotationZ(rotation_time * 1.5f) *
-                           projection;
-        transformations.push_back(trans5);
-        
-        // Transform 6: Oscillating rotation (sine wave)
-        float osc_angle = sin(rotation_time * 1.5f) * 0.5f;
-        Matrix4x4 trans6 = Matrix4x4::translation(3.0f, -0.5f, 0.0f) *
-                           Matrix4x4::rotationX(osc_angle) *
-                           Matrix4x4::rotationY(osc_angle * 0.7f) *
-                           projection;
-        transformations.push_back(trans6);
-        
-        // Transform 7: Tumbling motion (all three axes)
-        Matrix4x4 trans7 = Matrix4x4::translation(-1.5f, 0.0f, 0.0f) *
-                           Matrix4x4::rotationX(rotation_time * 1.2f) *
-                           Matrix4x4::rotationY(rotation_time * 0.8f) *
-                           Matrix4x4::rotationZ(rotation_time * 0.5f) *
-                           projection;
-        transformations.push_back(trans7);
-        
-        // Transform 8: Complex wobble motion
-        float wobble_x = sin(rotation_time * 2.0f) * 0.3f;
-        float wobble_y = cos(rotation_time * 1.7f) * 0.3f;
-        float wobble_z = sin(rotation_time * 0.9f) * cos(rotation_time * 1.1f) * 0.2f;
-        Matrix4x4 trans8 = Matrix4x4::translation(1.5f, 0.0f, 0.0f) *
-                           Matrix4x4::rotationX(wobble_x) *
-                           Matrix4x4::rotationY(wobble_y) *
-                           Matrix4x4::rotationZ(wobble_z) *
-                           projection;
-        transformations.push_back(trans8);
-        
-        // Render all triangles
-        for (size_t i = 0; i < triangles.size() && i < transformations.size(); i++) {
-            std::cout << "Rendering 3D triangle " << (i + 1) << "...\n" << std::flush;
+        for (const auto& triangle : weirdTriangles) {
+            // Transform weird triangle
+            Matrix4x4 weirdTransform = projection;
+            Triangle3D transformed = triangle.transform(weirdTransform);
             
-            // Transform triangle to screen space
-            Triangle3D transformed = triangles[i].transform(transformations[i]);
-            
-            // Check if triangle is facing towards camera (backface culling)
+            // Check if triangle is facing towards camera
             Vec3 normal = transformed.getNormal();
-            if (normal.z > 0) { // Triangle facing camera
+            if (normal.z > 0) {
                 pixelBuffer.render3DTriangle(transformed, WINDOW_WIDTH, WINDOW_HEIGHT);
             }
         }
         
-        // Add some additional 3D triangles for a more complex scene
-        
-        // Spinning pyramid faces (4 triangles forming a pyramid)
-        Vec3 pyramid_center = Vec3(0.0f, 0.0f, -7.0f);
-        float pyramid_size = 0.6f;
-        
-        // Pyramid base vertices
-        Vec3 base1 = pyramid_center + Vec3(-pyramid_size, -pyramid_size, pyramid_size);
-        Vec3 base2 = pyramid_center + Vec3(pyramid_size, -pyramid_size, pyramid_size);
-        Vec3 base3 = pyramid_center + Vec3(pyramid_size, -pyramid_size, -pyramid_size);
-        Vec3 base4 = pyramid_center + Vec3(-pyramid_size, -pyramid_size, -pyramid_size);
-        Vec3 apex = pyramid_center + Vec3(0.0f, pyramid_size, 0.0f);
-        
-        // Create pyramid rotation
-        Matrix4x4 pyramid_rot = Matrix4x4::rotationY(rotation_time * 0.5f) *
-                               Matrix4x4::rotationX(rotation_time * 0.3f) *
-                               projection;
-        
-        // Pyramid faces
-        std::vector<Triangle3D> pyramid_faces = {
-            Triangle3D(apex, base1, base2, 0xFFFF6666, 0xFFFF0000, 0xFFFF3333), // Red face
-            Triangle3D(apex, base2, base3, 0xFF66FF66, 0xFF00FF00, 0xFF33FF33), // Green face
-            Triangle3D(apex, base3, base4, 0xFF6666FF, 0xFF0000FF, 0xFF3333FF), // Blue face
-            Triangle3D(apex, base4, base1, 0xFFFFFF66, 0xFFFFFF00, 0xFFFFFF33)  // Yellow face
-        };
-        
-        for (auto& face : pyramid_faces) {
-            Triangle3D transformed_face = face.transform(pyramid_rot);
-            Vec3 normal = transformed_face.getNormal();
-            if (normal.z > 0) {
-                pixelBuffer.render3DTriangle(transformed_face, WINDOW_WIDTH, WINDOW_HEIGHT);
+        // Add some chaos background effects
+        if (randomFloat(0, 1) < 0.1f) { // 10% chance per frame
+            // Random streaks across screen
+            int numStreaks = randomInt(1, 5);
+            for (int i = 0; i < numStreaks; i++) {
+                pixelBuffer.drawLine(
+                    randomInt(0, WINDOW_WIDTH), randomInt(0, WINDOW_HEIGHT),
+                    randomInt(0, WINDOW_WIDTH), randomInt(0, WINDOW_HEIGHT),
+                    randomColor()
+                );
             }
         }
         
-        std::cout << "=== 3D ROTATING TRIANGLES DEMO COMPLETE ===\n\n" << std::flush;
+        // Occasionally add screen-wide effects
+        if (randomFloat(0, 1) < 0.05f) { // 5% chance per frame
+            switch (randomInt(0, 2)) {
+                case 0: // Random dots
+                    for (int i = 0; i < randomInt(50, 200); i++) {
+                        pixelBuffer.setPixel(randomInt(0, WINDOW_WIDTH), randomInt(0, WINDOW_HEIGHT), randomColor());
+                    }
+                    break;
+                case 1: // Random rectangles
+                    for (int i = 0; i < randomInt(3, 8); i++) {
+                        int x = randomInt(0, WINDOW_WIDTH - 50);
+                        int y = randomInt(0, WINDOW_HEIGHT - 50);
+                        pixelBuffer.fillRectangle(x, y, randomInt(10, 50), randomInt(10, 50), randomColor());
+                    }
+                    break;
+            }
+        }
+        
+        std::cout << "=== WEIRD VISUAL CHAOS DEMO COMPLETE ===\n\n" << std::flush;
     };
     
     std::cout << "About to call drawScene...\n" << std::flush;
@@ -846,12 +1118,6 @@ int main(int argc, char** argv) {
     std::cout << "Entering main loop (press ESC to exit, any other key to redraw)...\n" << std::flush;
     
     while (running) {
-        // Update animation time
-        uint32_t current_time = SDL_GetTicks();
-        float delta_time = (current_time - last_time) / 1000.0f;
-        last_time = current_time;
-        rotation_time += delta_time;
-        
         // Continuous animation - always redraw
         needsRedraw = true;
         

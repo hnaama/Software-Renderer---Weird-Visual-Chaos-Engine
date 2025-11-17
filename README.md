@@ -154,7 +154,6 @@ The renderer showcases various gradient triangle effects:
 ```
 Software-Renderer/
 ├── README.md              # This file
-├── RASTERIZATION.md       # Detailed algorithm documentation (includes 3D section)
 ├── Makefile              # Cross-platform build system
 ├── Makefile.windows      # Windows-specific configuration
 ├── src/
@@ -163,9 +162,6 @@ Software-Renderer/
 └── build/                # Generated build artifacts
 ```
 
-## 🔬 Algorithm Deep Dive
-
-For detailed technical documentation on both 2D rasterization and 3D transformation algorithms, see [RASTERIZATION.md](RASTERIZATION.md).
 
 ### 3D Rotation Example
 

@@ -955,15 +955,31 @@ int main(int argc, char** argv) {
     }
     std::cout << "SDL initialized successfully\n" << std::flush;
 
-    const int WINDOW_WIDTH = 800;
-    const int WINDOW_HEIGHT = 600;
+    // Get display information for fullscreen
+    SDL_DisplayMode displayMode;
+    if (SDL_GetCurrentDisplayMode(0, &displayMode) != 0) {
+        std::cerr << "SDL_GetCurrentDisplayMode failed: " << SDL_GetError() << "\n";
+        SDL_Quit();
+        return -1;
+    }
+    
+    std::cout << "Display resolution: " << displayMode.w << "x" << displayMode.h << "\n" << std::flush;
 
-    std::cout << "Creating window..." << std::flush;
+    // Use display resolution for fullscreen, or default for windowed
+    int WINDOW_WIDTH = displayMode.w;
+    int WINDOW_HEIGHT = displayMode.h;
+    bool isFullscreen = true;  // Start in fullscreen mode
+    
+    // For windowed mode (can be toggled later)
+    const int WINDOWED_WIDTH = 800;
+    const int WINDOWED_HEIGHT = 600;
+
+    std::cout << "Creating fullscreen window..." << std::flush;
     SDL_Window* window = SDL_CreateWindow(
-        "Software Renderer",
+        "Software Renderer - Weird Visual Chaos Engine",
         SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
         WINDOW_WIDTH, WINDOW_HEIGHT,
-        SDL_WINDOW_SHOWN
+        SDL_WINDOW_SHOWN | SDL_WINDOW_FULLSCREEN_DESKTOP
     );
 
     if (!window) {
@@ -971,17 +987,17 @@ int main(int argc, char** argv) {
         SDL_Quit();
         return -1;
     }
-    std::cout << "Window created\n" << std::flush;
+    std::cout << "Fullscreen window created (" << WINDOW_WIDTH << "x" << WINDOW_HEIGHT << ")\n" << std::flush;
 
     std::cout << "Creating renderer..." << std::flush;
-    SDL_Renderer* renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED);
+    SDL_Renderer* renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
     if (!renderer) {
         std::cerr << "SDL_CreateRenderer failed: " << SDL_GetError() << "\n";
         SDL_DestroyWindow(window);
         SDL_Quit();
         return -1;
     }
-    std::cout << "Renderer created\n" << std::flush;
+    std::cout << "Renderer created with VSync enabled\n" << std::flush;
 
     std::cout << "Creating texture..." << std::flush;
     SDL_Texture* texture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_ARGB8888,
@@ -994,15 +1010,19 @@ int main(int argc, char** argv) {
         SDL_Quit();
         return -1;
     }
-    std::cout << "Texture created\n" << std::flush;
+    std::cout << "Texture created (" << WINDOW_WIDTH << "x" << WINDOW_HEIGHT << ")\n" << std::flush;
 
-    // Create our pixel buffer
+    // Create our pixel buffer with current resolution
     std::cout << "Creating pixel buffer..." << std::flush;
     PixelBuffer pixelBuffer(WINDOW_WIDTH, WINDOW_HEIGHT);
     std::cout << "Pixel buffer created\n" << std::flush;
 
-    std::cout << "Software Renderer initialized!\n";
-    std::cout << "Window size: " << WINDOW_WIDTH << "x" << WINDOW_HEIGHT << "\n" << std::flush;
+    std::cout << "Software Renderer initialized in fullscreen!\n";
+    std::cout << "Current resolution: " << WINDOW_WIDTH << "x" << WINDOW_HEIGHT << "\n" << std::flush;
+    std::cout << "Controls:\n";
+    std::cout << "  ESC - Exit\n";
+    std::cout << "  F11 - Toggle fullscreen/windowed\n";
+    std::cout << "  F - Toggle fullscreen/windowed\n" << std::flush;
 
     bool running = true;
     bool needsRedraw = true;
@@ -1017,9 +1037,53 @@ int main(int argc, char** argv) {
     // Create weird visual manager
     WeirdVisualManager weirdVisualManager;
 
+    // Function to toggle fullscreen
+    auto toggleFullscreen = [&]() {
+        if (isFullscreen) {
+            // Switch to windowed mode
+            SDL_SetWindowFullscreen(window, 0);
+            SDL_SetWindowSize(window, WINDOWED_WIDTH, WINDOWED_HEIGHT);
+            SDL_SetWindowPosition(window, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED);
+            
+            // Recreate texture for new size
+            SDL_DestroyTexture(texture);
+            texture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_ARGB8888,
+                                      SDL_TEXTUREACCESS_STREAMING,
+                                      WINDOWED_WIDTH, WINDOWED_HEIGHT);
+            
+            // Recreate pixel buffer for new size
+            pixelBuffer = PixelBuffer(WINDOWED_WIDTH, WINDOWED_HEIGHT);
+            
+            WINDOW_WIDTH = WINDOWED_WIDTH;
+            WINDOW_HEIGHT = WINDOWED_HEIGHT;
+            isFullscreen = false;
+            
+            std::cout << "Switched to windowed mode (" << WINDOW_WIDTH << "x" << WINDOW_HEIGHT << ")\n" << std::flush;
+        } else {
+            // Switch to fullscreen mode
+            SDL_SetWindowFullscreen(window, SDL_WINDOW_FULLSCREEN_DESKTOP);
+            
+            // Recreate texture for new size
+            SDL_DestroyTexture(texture);
+            texture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_ARGB8888,
+                                      SDL_TEXTUREACCESS_STREAMING,
+                                      displayMode.w, displayMode.h);
+            
+            // Recreate pixel buffer for new size
+            pixelBuffer = PixelBuffer(displayMode.w, displayMode.h);
+            
+            WINDOW_WIDTH = displayMode.w;
+            WINDOW_HEIGHT = displayMode.h;
+            isFullscreen = true;
+            
+            std::cout << "Switched to fullscreen mode (" << WINDOW_WIDTH << "x" << WINDOW_HEIGHT << ")\n" << std::flush;
+        }
+        needsRedraw = true;
+    };
+
     // Function to draw the scene
     auto drawScene = [&]() {
-        std::cout << "\n=== DRAWING WEIRD VISUAL CHAOS DEMO ===\n" << std::flush;
+        std::cout << "\n=== DRAWING WEIRD VISUAL CHAOS DEMO (" << WINDOW_WIDTH << "x" << WINDOW_HEIGHT << ") ===\n" << std::flush;
         
         // Update animation time
         uint32_t current_time = SDL_GetTicks();
@@ -1038,7 +1102,7 @@ int main(int argc, char** argv) {
         // Update weird visual entities
         weirdVisualManager.update(delta_time);
         
-        // Set up perspective projection matrix
+        // Set up perspective projection matrix with current aspect ratio
         float fov = 45.0f * M_PI / 180.0f; // 45 degrees in radians
         float aspect = (float)WINDOW_WIDTH / WINDOW_HEIGHT;
         Matrix4x4 projection = Matrix4x4::perspective(fov, aspect, 0.1f, 100.0f);
@@ -1059,7 +1123,7 @@ int main(int argc, char** argv) {
             }
         }
         
-        // Add some chaos background effects
+        // Add some chaos background effects (scale with resolution)
         if (randomFloat(0, 1) < 0.1f) { // 10% chance per frame
             // Random streaks across screen
             int numStreaks = randomInt(1, 5);
@@ -1072,7 +1136,7 @@ int main(int argc, char** argv) {
             }
         }
         
-        // Occasionally add screen-wide effects
+        // Occasionally add screen-wide effects (scale with resolution)
         if (randomFloat(0, 1) < 0.05f) { // 5% chance per frame
             switch (randomInt(0, 2)) {
                 case 0: // Random dots
@@ -1082,9 +1146,10 @@ int main(int argc, char** argv) {
                     break;
                 case 1: // Random rectangles
                     for (int i = 0; i < randomInt(3, 8); i++) {
-                        int x = randomInt(0, WINDOW_WIDTH - 50);
-                        int y = randomInt(0, WINDOW_HEIGHT - 50);
-                        pixelBuffer.fillRectangle(x, y, randomInt(10, 50), randomInt(10, 50), randomColor());
+                        int maxSize = std::min(WINDOW_WIDTH, WINDOW_HEIGHT) / 20; // Scale with resolution
+                        int x = randomInt(0, WINDOW_WIDTH - maxSize);
+                        int y = randomInt(0, WINDOW_HEIGHT - maxSize);
+                        pixelBuffer.fillRectangle(x, y, randomInt(10, maxSize), randomInt(10, maxSize), randomColor());
                     }
                     break;
             }
@@ -1092,7 +1157,7 @@ int main(int argc, char** argv) {
         
         std::cout << "=== WEIRD VISUAL CHAOS DEMO COMPLETE ===\n\n" << std::flush;
     };
-    
+
     std::cout << "About to call drawScene...\n" << std::flush;
     drawScene();
     std::cout << "drawScene completed, about to render...\n" << std::flush;
@@ -1115,7 +1180,7 @@ int main(int argc, char** argv) {
     SDL_RenderPresent(renderer);
     std::cout << "Initial render complete - you should now see shapes on screen!\n" << std::flush;
     
-    std::cout << "Entering main loop (press ESC to exit, any other key to redraw)...\n" << std::flush;
+    std::cout << "Entering main loop (press ESC to exit, F11 or F to toggle fullscreen)...\n" << std::flush;
     
     while (running) {
         // Continuous animation - always redraw
@@ -1132,6 +1197,9 @@ int main(int argc, char** argv) {
                     if (e.key.keysym.sym == SDLK_ESCAPE) {
                         std::cout << "Escape pressed, exiting\n" << std::flush;
                         running = false;
+                    } else if (e.key.keysym.sym == SDLK_F11 || e.key.keysym.sym == SDLK_f) {
+                        std::cout << "Fullscreen toggle requested\n" << std::flush;
+                        toggleFullscreen();
                     }
                     break;
                     

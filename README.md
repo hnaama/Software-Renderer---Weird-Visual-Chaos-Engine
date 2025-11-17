@@ -69,7 +69,7 @@ Download SDL2 development libraries from [libsdl.org](https://www.libsdl.org/dow
 ### Building
 
 ```bash
-git clone https://github.com/hnaama/Software-Renderer.git
+git clone https://github.com/hnaama/Software-Renderer---Weird-Visual-Chaos-Engine.git
 cd Software-Renderer
 make
 ```

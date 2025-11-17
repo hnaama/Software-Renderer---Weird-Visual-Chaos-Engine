@@ -23,15 +23,6 @@ A cross-platform software renderer implemented in C++ featuring advanced 3D grap
    - Proper depth perception and perspective division
    - Screen space conversion with aspect ratio handling
 
-### Weird Visual Entity Types
-
-1. **🌟 Spiky Stars** - Morphing star shapes with changing spike counts
-2. **🫧 Morphing Blobs** - Organic shapes that pulse and deform using noise functions
-3. **🌿 Fractal Spikes** - Recursive triangular patterns that branch fractally
-4. **🎀 Twisted Ribbons** - Helical ribbon shapes twisting through 3D space
-5. **⚪ Pulsing Orbs** - Spherical shapes constructed from triangular rings
-6. **💥 Chaotic Fragments** - Exploding triangle pieces that scatter dynamically
-7. **🔷 Weird Polyhedrons** - Complex 3D shapes with morphing vertices
 
 ### Animation System
 - **Time-based Animation** - Frame-rate independent motion using delta time

@@ -5,29 +5,6 @@ A cross-platform software renderer implemented in C++ featuring advanced 3D grap
 <!-- ![Software Renderer Demo](assets/demo.png) -->
 *3D rotating triangles with dynamic lighting and weird visual entities*
 
-## ✨ Features
-
-### 🎨 Core Rendering System
-- **🔺 Advanced Triangle Rasterization** - Dual algorithms with vertex color interpolation
-- **🌐 Full 3D Graphics Pipeline** - Complete 3D transformation and projection system
-- **💡 Dynamic Lighting** - Directional lighting with surface normal calculations
-- **🎭 Perspective Projection** - True 3D depth perception with proper perspective division
-- **🔄 3D Transformations** - Rotation, translation, scaling with 4x4 matrices
-
-### 🌪️ Weird Visual Chaos System
-- **🎲 Randomized Entity Generation** - 7 different types of bizarre visual entities
-- **🔮 Unique Every Launch** - Hardware-seeded randomization ensures no two runs are identical
-- **🌈 Dynamic Color Palettes** - Each entity gets randomly generated color schemes
-- **⚡ Chaotic Physics** - Entities can randomly bounce, teleport, speed up, or change direction
-- **🔄 Morphing Geometry** - Real-time shape deformation using mathematical functions
-- **💫 Screen Effects** - Random streaks, dots, and rectangles for added chaos
-
-### 🚀 Performance & Quality
-- **⚡ Dual Rasterization Algorithms** - Barycentric and scanline methods
-- **🎯 Backface Culling** - Optimized rendering of only visible triangles
-- **🔄 Real-time Animation** - Smooth 60fps rendering with time-based animation
-- **🌈 Beautiful Gradients** - Floating-point color mathematics for smooth blending
-
 ## 🛠️ Technical Highlights
 
 ### 3D Graphics Pipeline
@@ -136,33 +113,6 @@ The renderer spawns between 5-25 bizarre entities that:
 - **Dynamic lighting** - Brightness changes based on surface orientation
 - **Perspective depth** - Objects appear closer/farther with realistic perspective
 
-## 📖 Demo Scenes
-
-The renderer showcases various gradient triangle effects:
-
-1. **RGB Triangle** - Red, Green, Blue vertices blending together
-2. **Warm Colors** - Red, Yellow, Orange color scheme
-3. **Cool Colors** - Blue, Cyan, Purple gradients
-4. **Large Rainbow Triangle** - Demonstrates performance with big triangles
-5. **Scanline vs Barycentric** - Algorithm comparison
-6. **Grayscale Gradient** - White to black transitions
-7. **Overlapping Triangles** - Layered rendering effects
-8. **Pastel Colors** - Soft, subtle color blending
-
-## 📁 Project Structure
-
-```
-Software-Renderer/
-├── README.md              # This file
-├── Makefile              # Cross-platform build system
-├── Makefile.windows      # Windows-specific configuration
-├── src/
-│   └── main.cpp          # Complete 3D renderer with chaos system
-├── assets/               # Demo images and resources
-└── build/                # Generated build artifacts
-```
-
-
 ### 3D Rotation Example
 
 ```cpp
@@ -202,15 +152,6 @@ uint32_t randomColor() {
 }
 ```
 
-## 📊 Performance
-
-| Feature | Implementation | Performance |
-|---------|---------------|-------------|
-| 3D Transformations | 4x4 matrix math | ~60fps with 20+ entities |
-| Triangle Rasterization | Dual algorithms | Optimized for entity count |
-| Lighting Calculations | Per-triangle normals | Real-time dynamic lighting |
-| Random Generation | Hardware entropy | Unique every launch |
-| Memory Management | Smart pointers | Automatic entity cleanup |
 
 ## 🎓 Educational Value
 

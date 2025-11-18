@@ -243,7 +243,7 @@ void FractalGameOfLifeSystem::update(float deltaTime) {
             float intensity = newValue + trailGrid[y][x];
             float hue = fmod(intensity * 180.0f + colorShift + fx * 50.0f + fy * 30.0f + time * 100.0f, 360.0f);
             float saturation = 0.8f + sin(time * 3.0f + intensity * 5.0f) * 0.2f;
-            float brightness = std::min(1.0d, intensity * (0.5f + sin(time * 4.0f) * 0.3f));
+            float brightness = std::min(1.f, float(intensity * (0.5f + sin(time * 4.0f) * 0.3f)));
             
             // Add rainbow cycling and strobe effects
             if (isTripping) {

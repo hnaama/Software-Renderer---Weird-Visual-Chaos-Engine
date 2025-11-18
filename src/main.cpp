@@ -1497,37 +1497,125 @@ public:
             default: return "Unknown";
         }
     }
+
+    void injectSpinner(int cx, int cy) {
+        // Create a simple spinner pattern (period-2 oscillator)
+        if (cx >= 1 && cx < width-1 && cy >= 1 && cy < height-1) {
+            // Cross pattern that oscillates
+            setCell(cx, cy, 1.0f);
+            setCell(cx-1, cy, 1.0f);
+            setCell(cx+1, cy, 1.0f);
+            setCell(cx, cy-1, 1.0f);
+            setCell(cx, cy+1, 1.0f);
+        }
+    }
+    
+    void injectGlider(int cx, int cy) {
+        // Create a glider pattern that moves diagonally
+        if (cx >= 2 && cx < width-2 && cy >= 2 && cy < height-2) {
+            // Standard glider pattern
+            setCell(cx, cy, 1.0f);
+            setCell(cx+1, cy+1, 1.0f);
+            setCell(cx-1, cy+2, 1.0f);
+            setCell(cx, cy+2, 1.0f);
+            setCell(cx+1, cy+2, 1.0f);
+        }
+    }
+    
+    void injectExploder(int cx, int cy) {
+        // Create an exploder pattern that creates complex behavior
+        if (cx >= 2 && cx < width-2 && cy >= 2 && cy < height-2) {
+            // Exploder pattern
+            setCell(cx-1, cy-1, 1.0f);
+            setCell(cx-1, cy, 1.0f);
+            setCell(cx-1, cy+1, 1.0f);
+            setCell(cx+1, cy-1, 1.0f);
+            setCell(cx+1, cy+1, 1.0f);
+        }
+    }
+    
+    void injectChaosBlob(int cx, int cy) {
+        // Create a random blob of cells for chaotic behavior
+        if (cx >= 3 && cx < width-3 && cy >= 3 && cy < height-3) {
+            for (int dy = -3; dy <= 3; dy++) {
+                for (int dx = -3; dx <= 3; dx++) {
+                    if (dx*dx + dy*dy <= 9) { // Circular area
+                        float prob = 0.6f - (dx*dx + dy*dy) * 0.05f;
+                        if (static_cast<float>(rand()) / RAND_MAX < prob) {
+                            setCell(cx + dx, cy + dy, 1.0f);
+                        }
+                    }
+                }
+            }
+        }
+    }
+    
+    void injectEnergyVortex(int cx, int cy) {
+        // Create a spiral vortex pattern
+        if (cx >= 4 && cx < width-4 && cy >= 4 && cy < height-4) {
+            // Spiral pattern with energy gradient
+            for (int r = 1; r <= 4; r++) {
+                for (int angle = 0; angle < 360; angle += 45) {
+                    float rad = angle * M_PI / 180.0f;
+                    int x = cx + static_cast<int>(r * cos(rad + r * 0.5f));
+                    int y = cy + static_cast<int>(r * sin(rad + r * 0.5f));
+                    if (x >= 0 && x < width && y >= 0 && y < height) {
+                        float energy = 1.0f - (r - 1) * 0.2f;
+                        setCell(x, y, energy);
+                    }
+                }
+            }
+            // Add center point
+            setCell(cx, cy, 1.0f);
+        }
+    }
+    
+    void setCell(int x, int y, float value) {
+        if (x >= 0 && x < width && y >= 0 && y < height) {
+            grid[y][x] = value;
+        }
+    }
 };
 
-// Implementation of the missing injection functions
+// Global fractal system instance for injection functions
+FractalGameOfLifeSystem* g_fractalSystem = nullptr;
+
+// Helper function to set cell value safely
+void setCell(int x, int y, float value) {
+    if (g_fractalSystem) {
+        g_fractalSystem->setCell(x, y, value);
+    }
+}
+
+// Global injection function implementations
 void injectSpinner(int cx, int cy) {
-    // Create a simple spinner pattern in the grid
-    // This is a placeholder - you would need to access the FractalGameOfLifeSystem's grid
-    // For now, just a stub implementation
+    if (g_fractalSystem) {
+        g_fractalSystem->injectSpinner(cx, cy);
+    }
 }
 
 void injectGlider(int cx, int cy) {
-    // Create a glider pattern in the grid
-    // This is a placeholder - you would need to access the FractalGameOfLifeSystem's grid
-    // For now, just a stub implementation
+    if (g_fractalSystem) {
+        g_fractalSystem->injectGlider(cx, cy);
+    }
 }
 
 void injectExploder(int cx, int cy) {
-    // Create an exploder pattern in the grid
-    // This is a placeholder - you would need to access the FractalGameOfLifeSystem's grid
-    // For now, just a stub implementation
+    if (g_fractalSystem) {
+        g_fractalSystem->injectExploder(cx, cy);
+    }
 }
 
 void injectChaosBlob(int cx, int cy) {
-    // Create a chaos blob pattern in the grid
-    // This is a placeholder - you would need to access the FractalGameOfLifeSystem's grid
-    // For now, just a stub implementation
+    if (g_fractalSystem) {
+        g_fractalSystem->injectChaosBlob(cx, cy);
+    }
 }
 
 void injectEnergyVortex(int cx, int cy) {
-    // Create an energy vortex pattern in the grid
-    // This is a placeholder - you would need to access the FractalGameOfLifeSystem's grid
-    // For now, just a stub implementation
+    if (g_fractalSystem) {
+        g_fractalSystem->injectEnergyVortex(cx, cy);
+    }
 }
 
 int main(int argc, char** argv) {
@@ -1624,6 +1712,9 @@ int main(int argc, char** argv) {
 
     // Create fractal/game of life system
     FractalGameOfLifeSystem fractalSystem(WINDOW_WIDTH, WINDOW_HEIGHT);
+    
+    // Set global pointer for injection functions
+    g_fractalSystem = &fractalSystem;
 
     // Mode toggle
     bool isWeirdChaosMode = true;

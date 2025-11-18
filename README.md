@@ -5,7 +5,7 @@ Oh look, another genius decided to reinvent the wheel by building a software ren
 <!-- ![Software Renderer Demo](assets/demo.png) -->
 *Look at these beautiful triangles! Your GPU is crying right now.*
 
-## 🛠️ Technical "Achievements" (AKA Reinventing Linear Algebra)
+## 🛠️ Technical "Achievements"
 
 ### 3D Graphics Pipeline (The Hard Way™)
 
@@ -79,6 +79,7 @@ Or if you're feeling brave:
 ## 🎮 Controls (What Little Control You Have)
 
 - **ESC** - Escape from this beautiful disaster
+- **M** - not for the weak
 - **Window Events** - Resize the window and watch everything break gracefully
 - **Continuous Animation** - Sit back and watch your CPU cry at 60fps
 
